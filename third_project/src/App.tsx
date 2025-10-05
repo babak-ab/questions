@@ -33,24 +33,58 @@ function decodeHtml(html: string): string {
   txt.innerHTML = html;
   return txt.value;
 }
+
 type DataState = {
-  type: string;
+  status: "loading" | "loaded" | "failed" | "next" | "last";
   payload?: string;
-  questions?: TriviaQuestion[];
+  index: number;
+  questions: TriviaQuestion[];
 };
 
+type Action =
+  | { type: "loading" }
+  | { type: "next" }
+  | { type: "last" }
+  | { type: "loaded"; questions: TriviaQuestion[] }
+  | { type: "failed"; payload?: string };
+
 const initialData: DataState = {
-  type: "loading",
+  status: "loading",
   payload: "",
+  index: 0,
   questions: [],
 };
 
-function reducer(state: DataState, action: DataState): DataState {
+function reducer(state: DataState, action: Action): DataState {
   switch (action.type) {
+    case "loading":
+      return { ...state, status: "loading" };
+
     case "loaded":
-      return action;
+      return {
+        ...state,
+        status: "loaded",
+        questions: action.questions,
+        index: 0,
+      };
+
     case "failed":
-      return action;
+      return { ...state, status: "failed", payload: action.payload };
+
+    case "next":
+      return {
+        ...state,
+        status: "next",
+        index: state.index + 1 > 9 ? 9 : state.index + 1,
+      };
+
+    case "last":
+      return {
+        ...state,
+        status: "last",
+        index: state.index - 1 < 0 ? 0 : state.index - 1,
+      };
+
     default:
       return state;
   }
@@ -110,7 +144,7 @@ export function TriviaQuiz() {
     fetchTrivia();
   }, []);
 
-  if (state.type == "loading") {
+  if (state.status == "loading") {
     return (
       <HorizontalLayout spacing="2">
         <svg
@@ -135,7 +169,7 @@ export function TriviaQuiz() {
     );
   }
 
-  if (state.type == "failed") {
+  if (state.status == "failed") {
     return (
       <HorizontalLayout spacing="2">
         <div
@@ -161,7 +195,7 @@ export function TriviaQuiz() {
   }
 
   if (
-    state.type == "loaded" &&
+    state.status == "loaded" &&
     state.questions &&
     state.questions.length == 0
   ) {
@@ -189,13 +223,33 @@ export function TriviaQuiz() {
     );
   }
 
+  console.log(state.questions, state.index);
+
+  return (
+    <div className="space-y-4 p-4">
+      {state.questions && (
+        <div key={state.index} className="border rounded p-4">
+          <h2 className="font-semibold">
+            {/* {i + 1}. {decodeHtml(q.question)} */}
+            <QuestionCard
+              questionData={state.questions[state.index]}
+              index={state.index}
+              dispatch={dispatch}
+            />
+          </h2>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="space-y-4 p-4">
       {state.questions &&
         state.questions.map((q, i) => (
           <div key={i} className="border rounded p-4">
             <h2 className="font-semibold">
-              {i + 1}. {decodeHtml(q.question)}
+              {/* {i + 1}. {decodeHtml(q.question)} */}
+              <QuestionCard questionData={q} />
             </h2>
           </div>
         ))}
@@ -205,7 +259,7 @@ export function TriviaQuiz() {
 
 type WelcomeProps = {
   start: boolean;
-  onStart: () => void; // 👈 function type
+  onStart: () => void;
 };
 
 export function QuizIntro(prop: WelcomeProps) {
@@ -224,6 +278,98 @@ export function QuizIntro(prop: WelcomeProps) {
         </button>
       )}
     </div>
+  );
+}
+
+type QuestionCard = {
+  questionData: TriviaQuestion;
+  index: number;
+  dispatch: React.Dispatch<Action>;
+};
+
+export function QuestionCard(props: QuestionCard) {
+  const [selected, setSelected] = useState<string | null>(null);
+  const [answered, setAnswered] = useState(false);
+  const { index, dispatch, questionData } = props;
+  // Combine correct + incorrect answers
+  const allAnswers = [
+    ...questionData.incorrect_answers,
+    questionData.correct_answer,
+  ];
+
+  // Shuffle answers (so correct isn’t always last)
+  //const shuffled = allAnswers.sort(() => Math.random() - 0.5);
+
+  function handleAnswer(choice: string) {
+    if (!answered) {
+      setSelected(choice);
+      setAnswered(true);
+    }
+  }
+
+  return (
+    <VerticalLayout fillWidth={true} spacing="1">
+      <HorizontalLayout fillWidth={true} align="center">
+        <button
+          type="button"
+          onClick={() => dispatch({ type: "last" })}
+          className="text-white bg-blue-700 hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 font-medium rounded-full text-sm px-5 py-2.5 text-center  dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+        >
+          Last
+        </button>
+        <div className="text-sm text-gray-500">({index + 1}/10)</div>
+        <button
+          type="button"
+          onClick={() => dispatch({ type: "next" })}
+          className="text-white bg-blue-700 hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 font-medium rounded-full text-sm px-5 py-2.5 text-center  dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+        >
+          Next
+        </button>
+      </HorizontalLayout>
+      {/* Question */}
+      <div className="max-w-sm rounded overflow-hidden shadow-lg">
+        <div className="px-6 py-4">
+          <p className="text-gray-700 text-base">
+            {decodeHtml(questionData.question)}
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          {allAnswers.map((choice, i) => {
+            const isCorrect = choice === questionData.correct_answer;
+            const isSelected = choice === selected;
+
+            let btnStyle =
+              "border px-4 py-2 w-full text-left rounded cursor-pointer ";
+            if (answered) {
+              if (isCorrect) btnStyle += "bg-green-200 border-green-500";
+              else if (isSelected) btnStyle += "bg-red-200 border-red-500";
+              else btnStyle += "bg-gray-100";
+            } else {
+              btnStyle += "hover:bg-blue-100 border-gray-300";
+            }
+
+            return (
+              <button
+                key={i}
+                className={btnStyle}
+                onClick={() => handleAnswer(choice)}
+                disabled={answered}
+              >
+              {decodeHtml(choice)} 
+              </button>
+            );
+          })}
+        </div>
+        {answered && (
+          <p className="text-sm mt-2">
+            {selected === questionData.correct_answer
+              ? "✅ Correct!"
+              : `❌ Wrong. Correct answer is: ${questionData.correct_answer}`}
+          </p>
+        )}
+      </div>
+    </VerticalLayout>
   );
 }
 

@@ -22,11 +22,11 @@ export default function VerticalLayout(props: VerticalLayoutProps) {
       ? "justify-start"
       : props.align === "right"
       ? "justify-end"
-      : "justify-center";
+      : "justify-between";
 
   return (
     <div
-      className={`flex flex-col items-center ${alignClass} ${spacingClass} ${paddingClass} ${borderClass} ${fillWidthClass} ${fillHeightClass}`}
+      className={`flex flex-col   items-center ${alignClass} ${spacingClass} ${paddingClass} ${borderClass} ${fillWidthClass} ${fillHeightClass}`}
     >
       {props.children}
     </div>

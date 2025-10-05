@@ -23,11 +23,11 @@ export default function HorizontalLayout(props: HorizontalLayoutProps) {
       ? "justify-start"
       : props.align === "right"
       ? "justify-end"
-      : "justify-center";
+      : "justify-between";
 
   return (
     <div
-      className={`flex flex-row items-center ${alignClass} ${spacingClass} ${paddingClass} ${borderClass} ${fillWidthClass} ${fillHeightClass}`}
+      className={`flex flex-row  items-center ${alignClass} ${spacingClass} ${paddingClass} ${borderClass} ${fillWidthClass} ${fillHeightClass}`}
     >
       {props.children}
     </div>
