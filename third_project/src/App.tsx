@@ -1,6 +1,6 @@
 import Headers from "./components/Header";
 import "./App.css";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useReducer } from "react";
 import VerticalLayout from "./components/VerticalLayout";
 import HorizontalLayout from "./components/HorizontalLayout";
 
@@ -33,15 +33,39 @@ function decodeHtml(html: string): string {
   txt.innerHTML = html;
   return txt.value;
 }
+type DataState = {
+  type: string;
+  payload?: string;
+  questions?: TriviaQuestion[];
+};
+
+const initialData: DataState = {
+  type: "loading",
+  payload: "",
+  questions: [],
+};
+
+function reducer(state: DataState, action: DataState): DataState {
+  switch (action.type) {
+    case "loaded":
+      return action;
+    case "failed":
+      return action;
+    default:
+      return state;
+  }
+}
+
 export function TriviaQuiz() {
-  const [questions, setQuestions] = useState<TriviaQuestion[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
+  //const [questions, setQuestions] = useState<TriviaQuestion[] | null>(null);
+
+  const [state, dispatch] = useReducer(reducer, initialData);
 
   useEffect(() => {
     async function fetchTrivia() {
-      setLoading(true);
-      setError(null);
+      dispatch({
+        type: "loading",
+      });
 
       try {
         const response = await fetch("https://opentdb.com/api.php?amount=10");
@@ -61,23 +85,32 @@ export function TriviaQuiz() {
           throw new Error("OpenTDB API returned a non-success code.");
         }
 
-        setQuestions(data.results);
+        //setQuestions(data.results);
+        dispatch({
+          type: "loaded",
+          questions: data.results,
+        });
       } catch (err) {
+        let error = "";
         if (err instanceof HttpError) {
-          setError(`Failed to fetch: ${err.message}`);
+          error = `Failed to fetch: ${err.message}`;
         } else if (err instanceof Error) {
-          setError(`Unexpected error: ${err.message}`);
+          error = `Unexpected error: ${err.message}`;
         } else {
-          setError("Unknown error occurred.");
+          error = "Unknown error occurred.";
         }
-      } finally {
-        setLoading(false);
+
+        dispatch({
+          type: "failed",
+          payload: error,
+        });
       }
     }
 
     fetchTrivia();
   }, []);
-  if (loading) {
+
+  if (state.type == "loading") {
     return (
       <HorizontalLayout spacing="2">
         <svg
@@ -102,7 +135,7 @@ export function TriviaQuiz() {
     );
   }
 
-  if (error) {
+  if (state.type == "failed") {
     return (
       <HorizontalLayout spacing="2">
         <div
@@ -120,14 +153,18 @@ export function TriviaQuiz() {
           </svg>
           <span className="sr-only">Info</span>
           <div>
-            <span className="font-medium">{error}!</span>
+            <span className="font-medium">{state.payload}!</span>
           </div>
         </div>
       </HorizontalLayout>
     );
   }
 
-  if (!questions) {
+  if (
+    state.type == "loaded" &&
+    state.questions &&
+    state.questions.length == 0
+  ) {
     return (
       <HorizontalLayout spacing="2">
         <div
@@ -154,13 +191,14 @@ export function TriviaQuiz() {
 
   return (
     <div className="space-y-4 p-4">
-      {questions.map((q, i) => (
-        <div key={i} className="border rounded p-4">
-          <h2 className="font-semibold">
-            {i + 1}. {decodeHtml(q.question)}
-          </h2>
-        </div>
-      ))}
+      {state.questions &&
+        state.questions.map((q, i) => (
+          <div key={i} className="border rounded p-4">
+            <h2 className="font-semibold">
+              {i + 1}. {decodeHtml(q.question)}
+            </h2>
+          </div>
+        ))}
     </div>
   );
 }
