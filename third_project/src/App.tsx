@@ -203,14 +203,45 @@ export function TriviaQuiz() {
   );
 }
 
+type WelcomeProps = {
+  start: boolean;
+  onStart: () => void; // 👈 function type
+};
+
+export function QuizIntro(prop: WelcomeProps) {
+  return (
+    <div className="text-center space-y-4">
+      <h1 className="text-3xl font-bold">👋 Welcome!</h1>
+      <p className="text-lg text-gray-600">
+        This is a short quiz. Let’s get started!
+      </p>
+      {!prop.start && (
+        <button
+          onClick={prop.onStart}
+          className="px-6 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition"
+        >
+          Start Quiz
+        </button>
+      )}
+    </div>
+  );
+}
+
 function App() {
+  const [start, setStart] = useState(false);
+  function handleStart() {
+    setStart(true);
+  }
   return (
     <div className="flex h-screen w-auto m-0 p-0  flex">
       <VerticalLayout border={false} fillWidth={true} align="left" spacing="4">
-        <Headers />
-        <div className="p-10">
-          <TriviaQuiz />
-        </div>
+        {/* <Headers /> */}
+        <QuizIntro onStart={handleStart} start={start}></QuizIntro>
+        {start && (
+          <div className="p-10">
+            <TriviaQuiz />
+          </div>
+        )}
       </VerticalLayout>
     </div>
   );
