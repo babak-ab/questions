@@ -1,0 +1,7 @@
+import { useEffect } from "react";
+
+export function usePreline() {
+  useEffect(() => {
+    import("preline"); // dynamically load so it runs client-side
+  }, []);
+}
